@@ -27,18 +27,36 @@ sense of whether a prior request was ever followed up on) doesn't exist as first
 the engine. That's a structural ceiling on patch-based fixes, not a bug I can code my way around
 inside `agent.ts`.
 
-## Where I'm looking next
+## A note on timing
 
-This is what led me to **[Agentopia: Long-Term Life Simulation and Learning in Agent Societies](https://arxiv.org/abs/2606.07513)**
-— a framework built for long-horizon (simulated-decade) multi-agent societies where agents pursue
-needs/goals and build relationships over time, rather than one built for short, scripted
-scenarios with motivation retrofitted on top. I have only read the abstract in depth so far
-(the paper's "life reward" mechanism and 100-agent, 10-year setup is the headline result); the
-next step is reading its method section closely to see exactly how it represents agent
-goals/needs as explicit, persistent state and how that compares to the gaps documented above,
-and to decide which parts of that design are worth adapting back into a scarcity-focused scenario
-closer to the one I started with.
+Stage 3 was first run in September with the mechanism active; that run informed the decision to
+move on, but its export was incomplete. The confirmed, fully logged run reported in
+[`03-dynamic-subgoal.md`](03-dynamic-subgoal.md) was re-run on 2026-10-03 to complete the record,
+after work on the follow-up simulator had already begun. It reproduced the picture behind the
+decision: the `no_candidates` bottleneck seen in the Stage 2 logs (52%) did not improve when the
+motivation text became dynamic (67%).
 
-*(This document intentionally stops at the point of the pivot. The Agentopia-based work is a
-separate, ongoing phase and will get its own write-up once there's implementation and data to
-show, rather than being folded into this repo's narrative.)*
+## What happened next
+
+I adopted two ideas from **[Agentopia: Long-Term Life Simulation and Learning in Agent Societies](https://arxiv.org/abs/2606.07513)**:
+its discrete weekly cycle (Plan → Contact → Activity → Review) and its life reward (a social
+component computed by PageRank on private like/respect ratings, a subjective well-being component,
+and an economic component). With them I rebuilt the island scenario as a turn-based Python
+simulator, keeping the same six characters and the same scarcity question.
+
+That design removes the gaps documented above by construction rather than by patching:
+
+| Left unfixed in AI Town | In the turn-based simulator |
+|---|---|
+| Who meets whom is decided by movement, distance and cooldown before motivation is consulted (`no_candidates` 52-67%) | There is no map: in each message round every agent chooses directly whom to write to, so `no_candidates` cannot occur |
+| No persistent memory of specific commitments to specific people | Trade, loan and cooperative-fishing proposals are objects with an id and a status (open / accepted / rejected / expired); loans carry a due day that the simulator enforces, and a default is announced to everyone |
+| No sense of whether a prior request was ever followed up | Open proposals, debts and credits are part of each agent's state and shown to it every turn |
+| Motivation text overwritten wholesale after each conversation | Persistent per-agent state (weekly plan, diary, impressions of each other agent, a "current mindset" that can change only at season ends and within bounds) |
+
+The price is real: no space, no chance encounters, nothing to watch, and actions chosen from a
+fixed menu rather than open-ended behaviour.
+
+The new simulator is used for an A/B experiment in which the only difference between two groups is
+the scoring rule the agents are told they will be judged by (individualist vs reputation). It is
+documented separately, from design through every rule change to the results, in
+**[island-sim](https://github.com/YOUR-USERNAME/island-sim)**.

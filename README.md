@@ -13,6 +13,8 @@ that same logging system to show — quantitatively — that patch-based fixes h
 ceiling. That finding is what moved the project toward a different kind of framework
 ([Agentopia](https://arxiv.org/abs/2606.07513)) built around persistent agent goals from the
 start, rather than one with motivation retrofitted on top.
+The follow-up project, a turn-based simulator built on Agentopia's weekly cycle and life reward,
+lives in a separate repository: **[island-sim](https://github.com/YOUR-USERNAME/island-sim)**.
 
 ## The setup
 
@@ -30,6 +32,8 @@ toward hoarding, or fragment — and what in the simulation's mechanics determin
 | 2 — Fixed motivation (wander) | Same scoring extended to idle "wander" decisions; decision-log system added | `no_candidates` branch still dominates invite decisions (52% of 209 logged) | 2026-09-13, 12:48–13:37 core capture (49 min, 250 msgs); full world ran to 09-15 14:44, decision-log window 14:20–14:43 (23 min, 209 decisions) | [`patches/02-fixed-motivation-wander/`](patches/02-fixed-motivation-wander/) |
 | 3 — Dynamic sub-goal | `currentSubGoal` regenerated from memory after each conversation | `no_candidates` *worse* (67% of 568), motivation-driven share *drops* (28.7% → 19.5%) despite smarter scoring text | 2026-10-03, 02:46–03:44 UTC (58 min, 568 decisions, 42 memories) | [`patches/03-dynamic-subgoal/`](patches/03-dynamic-subgoal/) |
 | → Pivot | — | Three rounds of increasingly sophisticated patches couldn't move the bottleneck — it's upstream of any scoring logic | — | — |
+
+*Stage 3 was first run in September with the mechanism active; that export was incomplete, so the data reported above comes from a re-run on 2026-10-03, made to complete the record after the follow-up project had started. See [`docs/04-why-pivot-to-agentopia.md`](docs/04-why-pivot-to-agentopia.md).*
 
 Full reasoning, code excerpts, and the TypeScript/deployment issues hit along the way are in
 [`docs/`](docs/), one file per row above, read in order.
@@ -52,7 +56,7 @@ Full reasoning, code excerpts, and the TypeScript/deployment issues hit along th
    partner-selection logic never reads agent identity/plan.
 2. **[Patching in a fixed motivation score](docs/02-fixed-motivation.md)** — embedding-based
    scoring added at invite time, then extended to idle "wander" behavior; the decision-logging
-   system that made results falsifiable; and a deployment bug the logs caught by accident.
+   system that made results falsifiable.
 3. **[From static text to memory-updated motivation](docs/03-dynamic-subgoal.md)** — letting an
    agent's current sub-goal update after every conversation, what that exposed about information
    loss, and the confirmed data showing the upstream bottleneck persisted anyway.

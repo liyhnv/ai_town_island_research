@@ -150,26 +150,12 @@ from a random one just by watching movement.
 
 Across two full-length runs with decision logging enabled, the `no_candidates` branch (agent
 wanted to decide but had zero eligible candidates after the cooldown filter) dominated the
-`invite` decision type: 52% in the first run, 67% in a second, shorter run. While
-motivation-driven choices (`motivation` branch, invite + wander combined) stayed a minority
-(~20–30%). See `data/01-fixed-motivation/` and `data/02-fixed-motivation-wander/` for the raw
-exports and `analysis/decision_log_stats.py` for the script used to compute this.
+`invite` decision type: 52% in the Solution-2 run, rising to 67% in the later Stage 3 run (see
+[`03-dynamic-subgoal.md`](03-dynamic-subgoal.md)), while motivation-driven choices (`motivation`
+branch, invite + wander combined) stayed a minority (28.7%, then 19.5%). The Solution-2 decision
+logs are in `data/02-fixed-motivation-wander/decisionlog-export/`; see
+`analysis/decision_log_stats.py` for the script used to compute these figures.
 
 This told me the embedding-based scoring, however it was weighted, was only ever operating on the
 minority of decisions that reached it: the bottleneck was upstream, in how rarely a motivation
 check was even triggered.
-
-## Postscript — the decision-log export that caught a deployment bug
-
-`data/02-fixed-motivation-wander/decisionlog-export/` is a more complete export of one Solution-2
-run (same `worldId` as `solution2_records.xlsx`, matched by identical `conversationId` + message
-text in both exports) — it adds the `agentDecisionLogs` table itself plus `descriptions`
-(per-agent `identity`/`plan`/`currentSubGoal` as stored at export time).
-
-I originally filed this under the dynamic-sub-goal stage, assuming it reflected Mechanism 2
-(`currentSubGoal`) already running. Checking `descriptions.xlsx` shows `currentSubGoal` is empty
-for all 6 agents across the whole run — i.e. this data is Solution-2 behavior only; the Mechanism 2
-code had not actually taken effect yet. That mismatch is itself the bug documented in
-`03-dynamic-subgoal.md` (§ "Deployment is invisible by design"): the code change to `memory.ts`
-had not redeployed, Convex gave no error, and the only way to catch it was reading the live file
-back and diffing it against what was intended. This export is the evidence trail for that.

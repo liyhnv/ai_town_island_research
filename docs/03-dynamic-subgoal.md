@@ -108,12 +108,12 @@ function. See `04-why-pivot-to-agentopia.md` for how this shaped the next step.
 568 decisions logged) where `descriptions.jsonl` confirms `currentSubGoal` is populated and distinct
 for all 6 agents — e.g. Kurt's reads "Commit to fair rations within our own family for a trial
 period," Pete's "I need to see effort from the others before I start sharing everything." This is
-the first run in this repo where Mechanism 2 is confirmed to have actually been active (contrast
-with the Solution-2 run in `02-fixed-motivation.md`'s postscript, where the same field was empty
-throughout).
+the run in this repo where Mechanism 2 is confirmed to have been active. Stage 3 was first run in
+September with the mechanism active, and that run informed the decision described in
+[`04-why-pivot-to-agentopia.md`](04-why-pivot-to-agentopia.md); its export was incomplete, so the
+run reported here was re-run on 2026-10-03 to complete the record.
 
-Branch distribution for this run (`python analysis/decision_log_stats.py data/03-dynamic-subgoal/decisionlogs.jsonl`
-after adding JSONL support — see note below):
+Branch distribution for this run (`python analysis/decision_log_stats.py data/03-dynamic-subgoal/decisionlogs.jsonl`):
 
 | decisionType | branch | count | % |
 |---|---|---|---|
@@ -130,5 +130,5 @@ supports `04-why-pivot-to-agentopia.md`: making the content of the motivation si
 `no_candidates` bottleneck identified back in Stage 1–2 is, if anything, worse here.
 
 (Note: `decisionlogs.jsonl` here is the Convex Dashboard's raw JSONL export rather than an xlsx —
-kept as-is since JSONL is already diff- and grep-friendly; `analysis/decision_log_stats.py`
-currently expects xlsx and needs a small JSONL-reading branch added to run on this file directly.)
+kept as-is since JSONL is already diff- and grep-friendly; `analysis/decision_log_stats.py` reads
+both formats.)
