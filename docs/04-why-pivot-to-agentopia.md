@@ -59,4 +59,4 @@ fixed menu rather than open-ended behaviour.
 The new simulator is used for an A/B experiment in which the only difference between two groups is
 the scoring rule the agents are told they will be judged by (individualist vs reputation). It is
 documented separately, from design through every rule change to the results, in
-**[island-sim](https://github.com/YOUR-USERNAME/island-sim)**.
+**[island-sim](https://github.com/liyhnv/island-sim)**.

@@ -14,7 +14,7 @@ ceiling. That finding is what moved the project toward a different kind of frame
 ([Agentopia](https://arxiv.org/abs/2606.07513)) built around persistent agent goals from the
 start, rather than one with motivation retrofitted on top.
 The follow-up project, a turn-based simulator built on Agentopia's weekly cycle and life reward,
-lives in a separate repository: **[island-sim](https://github.com/YOUR-USERNAME/island-sim)**.
+lives in a separate repository: **[island-sim](https://github.com/liyhnv/island-sim)**.
 
 ## The setup
 
