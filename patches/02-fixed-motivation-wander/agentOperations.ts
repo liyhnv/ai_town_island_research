@@ -134,10 +134,10 @@ export const agentDoSomething = internalAction({
     // Decide whether to do an activity or wander somewhere.
     if (!player.pathfinding) {
       if (recentActivity || justLeftConversation) {
-        // 方案2新增：闲逛前先问一句“有没有特别想找的人”。
-        // 注意这里不受 CONVERSATION_COOLDOWN 限制（chooseWanderTarget 内部用
-        // applyCooldown: false 查的）——冷却期不该拦住“往TA那边走”，
-        // 只该拦住后面“走到了还不能开口”那一步（那一步还是走 findConversationCandidate）。
+        // Solution 2 addition: before wandering, first ask "is there anyone in particular I want to find".
+        // Note this isn't subject to CONVERSATION_COOLDOWN (chooseWanderTarget internally queries
+        // with applyCooldown: false) -- cooldown shouldn't block "walking toward them",
+        // only the later "arrived but still can't speak" step (which still goes through findConversationCandidate).
         const wanderTarget = await ctx.runAction(internal.aiTown.agent.chooseWanderTarget, {
           now,
           worldId: args.worldId,
@@ -181,7 +181,7 @@ export const agentDoSomething = internalAction({
     const invitee =
       justLeftConversation || recentlyAttemptedInvite
         ? undefined
-        : await ctx.runAction(internal.aiTown.agent.findConversationCandidate, { //改Query为Action
+        : await ctx.runAction(internal.aiTown.agent.findConversationCandidate, { // changed from Query to Action
             now,
             worldId: args.worldId,
             player: args.player,
@@ -209,8 +209,9 @@ function wanderDestination(worldMap: WorldMap) {
   };
 }
 
-// 方案2新增：在“有目的地闲逛”时使用——朝着 chooseWanderTarget 选出的目标附近走，
-// 但加一点随机抖动，避免精确叠在对方脚下，同时保证落点还在地图范围内。
+// Solution 2 addition: used during "purposeful wandering" -- walks toward the target chosen by chooseWanderTarget,
+// chosen by chooseWanderTarget, with a bit of random jitter added so as not to land
+// exactly on top of them, while keeping the destination within the map bounds.
 const WANDER_JITTER_TILES = 4;
 
 function wanderTowards(worldMap: WorldMap, target: { x: number; y: number }) {

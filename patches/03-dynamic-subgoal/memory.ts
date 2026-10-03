@@ -81,9 +81,9 @@ export async function rememberConversation(
     },
     embedding,
   });
-  // 机制2新增：根据这段对话，刷新“我现在的阶段性目标”，写回 agentDescriptions 表。
-  // 这句话之后会和 identity/plan 一起被 loadCandidateContext 拼进 embedding，
-  // 影响后续选谁发邀请/往哪逛的动机打分。
+  // Mechanism 2 addition: refresh "my current sub-goal" based on this conversation and write it back to the agentDescriptions table.
+  // This text later gets concatenated with identity/plan by loadCandidateContext into the
+  // embedding input, affecting the motivation score for later invite/wander decisions.
   const currentSubGoal = await generateSubGoal(player.name, description);
   console.log(`generateSubGoal for ${player.name} (agent ${agentId}):`, JSON.stringify(currentSubGoal));
   if (currentSubGoal) {
@@ -280,9 +280,9 @@ async function calculateImportance(description: string) {
   return importance;
 }
 
-// 机制2新增：根据刚结束的这段对话，生成一句"我现在的阶段性目标"。
-// 和 calculateImportance 一样是轻量的单次LLM调用（max_tokens很小），
-// 失败时返回 undefined，不影响 rememberConversation 主流程继续跑完。
+// Mechanism 2 addition: generate a one-sentence "my current sub-goal" from the conversation that just ended.
+// A lightweight, single LLM call like calculateImportance (small max_tokens);
+// returns undefined on failure without blocking the rest of rememberConversation.
 async function generateSubGoal(playerName: string, description: string): Promise<string | undefined> {
   try {
     const { content } = await chatCompletion({

@@ -168,7 +168,7 @@ export const agentDoSomething = internalAction({
     const invitee =
       justLeftConversation || recentlyAttemptedInvite
         ? undefined
-        : await ctx.runAction(internal.aiTown.agent.findConversationCandidate, { //改Query为Action
+        : await ctx.runAction(internal.aiTown.agent.findConversationCandidate, { // changed from Query to Action
             now,
             worldId: args.worldId,
             player: args.player,

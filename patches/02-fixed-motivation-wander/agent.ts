@@ -32,12 +32,12 @@ import * as embeddingsCache from '../agent/embeddingsCache';
 
 const selfInternal = internal.aiTown.agent;
 
-// ---- 方案1新增：语义动机打分的可调参数 ----
-// 后续想做对照实验（比如“关掉动机权重，只看距离”）可以把这几个常量挪到 constants.ts 里，
-// 或者直接改成 0/1 做开关。
-const MOTIVATION_WEIGHT = 1.0; // 语义相关度（我的plan 和 对方identity/plan的余弦相似度）的权重
-const DISTANCE_WEIGHT = 0.6; // 距离惩罚的权重（距离越远分越低）
-const RANDOM_EXPLORATION_PROBABILITY = 0.3; // 保留一部分“纯随机/就近”选择，避免社交网络固化成几个固定的对子
+// ---- Solution 1 addition: tunable parameters for semantic motivation scoring ----
+// For future ablation experiments (e.g. "turn off motivation weight, use distance only"),
+// these constants could be moved to constants.ts, or toggled directly as 0/1 switches.
+const MOTIVATION_WEIGHT = 1.0; // weight of semantic relevance (cosine similarity between my plan and the candidate's identity/plan)
+const DISTANCE_WEIGHT = 0.6; // weight of the distance penalty (farther away -> lower score)
+const RANDOM_EXPLORATION_PROBABILITY = 0.3; // keep some "pure random / nearest" choices so the social network doesn't collapse into a few fixed pairs
 
 export class Agent {
   id: GameId<'agents'>;
@@ -349,15 +349,19 @@ export const agentSendMessage = internalMutation({
   },
 });
 
-// ---- 方案1改动核心 ----
-// 原来的 findConversationCandidate 是一个 internalQuery，纯按 PLAYER_CONVERSATION_COOLDOWN
-// 过滤 + 距离排序。现在拆成两部分：
-//   1. loadCandidateContext（internalQuery）：只做数据库读取——保留原有的冷却过滤逻辑，
-//      并且额外把“我的 identity+plan”和“每个候选人的 identity+plan（或 description）”读出来。
-//   2. findConversationCandidate（改成 internalAction）：因为算 embedding 需要调用
-//      Ollama/OpenAI 的网络接口，Convex 的 query 函数不允许发网络请求，所以这一步必须是 action。
-//      这里用 embeddingsCache（项目里memory模块已经在用的缓存工具）算“我的plan”和“候选人
-//      identity/plan”的语义相似度，作为“动机分”，再和距离分加权，取代原来纯距离排序。
+// ---- Core of the Solution 1 change ----
+// The original findConversationCandidate was an internalQuery that filtered purely by
+// PLAYER_CONVERSATION_COOLDOWN and sorted by distance. It's now split into two parts:
+//   1. loadCandidateContext (internalQuery): database reads only -- keeps the original
+//      cooldown-filtering logic, and additionally loads "my identity+plan" and each
+      // candidate's identity+plan (or description).
+//   2. findConversationCandidate (now an internalAction): computing embeddings requires
+//      calling the Ollama/OpenAI network API, which a Convex query cannot do -- so this
+      // step must be an action.
+//      This uses embeddingsCache (the caching utility already used by the memory module)
+//      to compute the semantic similarity between "my plan" and each candidate's
+      // identity/plan as the "motivation score", then weights it against the distance
+      // score, replacing the original pure-distance sort.
 
 type CandidateWithContext = {
   id: string;
@@ -371,10 +375,10 @@ export const loadCandidateContext = internalQuery({
     worldId: v.id('worlds'),
     player: v.object(serializedPlayer),
     otherFreePlayers: v.array(v.object(serializedPlayer)),
-    // 方案2新增：是否套用 PLAYER_CONVERSATION_COOLDOWN 过滤。
-    // findConversationCandidate（决定发不发邀请）传 true；
-    // chooseWanderTarget（决定往哪个方向逛）传 false——
-    // 冷却期不该拦住“往TA那边走”，只该拦住“走到了还不能开口”。
+    // Solution 2 addition: whether to apply the PLAYER_CONVERSATION_COOLDOWN filter.
+    // findConversationCandidate (decides whether to send an invite) passes true;
+    // chooseWanderTarget (decides which direction to wander) passes false --
+    // cooldown shouldn't block "walking toward them", only "arriving but still not being able to talk".
     applyCooldown: v.optional(v.boolean()),
   },
   handler: async (
@@ -387,7 +391,7 @@ export const loadCandidateContext = internalQuery({
       throw new Error(`World ${worldId} not found`);
     }
 
-    // 我自己（发起筛选的这个agent）的 identity + plan，作为“动机文本”的锚点。
+    // My own (the agent running this selection) identity + plan, as the anchor for the "motivation text".
     let myPlanText: string | null = null;
     const myAgent = world.agents.find((a) => a.playerId === player.id);
     if (myAgent) {
@@ -403,7 +407,7 @@ export const loadCandidateContext = internalQuery({
     const candidates: CandidateWithContext[] = [];
 
     for (const otherPlayer of otherFreePlayers) {
-      // 冷却过滤逻辑：只有 shouldApplyCooldown 为 true 时才生效（原版行为不变）。
+      // Cooldown-filtering logic: only takes effect when shouldApplyCooldown is true (original behavior unchanged).
       if (shouldApplyCooldown) {
         const lastMember = await ctx.db
           .query('participatedTogether')
@@ -417,7 +421,7 @@ export const loadCandidateContext = internalQuery({
         }
       }
 
-      // 候选人如果是agent，用identity+plan；如果是人类玩家（没有agent），退化用playerDescription。
+      // If the candidate is an agent, use identity+plan; if it's a human player (no agent), fall back to playerDescription.
       let motivationText: string | null = null;
       const candidateAgent = world.agents.find((a) => a.playerId === otherPlayer.id);
       if (candidateAgent) {
@@ -484,11 +488,12 @@ export const findConversationCandidate = internalAction({
       return undefined;
     }
 
-    // 保留一部分“纯随机/就近”选择：
-    // 1) 没查到自己的plan文本时（理论上不该发生，兜底）；
-    // 2) 按 RANDOM_EXPLORATION_PROBABILITY 的概率主动放弃动机打分。
-    // 这样可以避免agent的社交网络很快收敛成几个固定对子，保留一部分“偶然社交”，
-    // 这对你想观察的“跨家庭意外接触/立场传播路径”这类现象很重要。
+    // Keep some "pure random / nearest" choices:
+    // 1) when my own plan text can't be found (shouldn't happen in theory -- a fallback);
+    // 2) with probability RANDOM_EXPLORATION_PROBABILITY, deliberately skip motivation scoring.
+    // This keeps agents' social network from quickly converging into a few fixed pairs,
+    // preserving some "chance encounters" --
+    // important for observing things like cross-family incidental contact or belief-propagation paths.
     if (!myPlanText || Math.random() < RANDOM_EXPLORATION_PROBABILITY) {
       const sorted = [...candidates].sort(
         (a: CandidateWithContext, b: CandidateWithContext) =>
@@ -497,9 +502,9 @@ export const findConversationCandidate = internalAction({
       return sorted[0]?.id;
     }
 
-    // 批量拿 embedding：第0个是“我的plan”，后面依次是每个候选人的动机文本。
-    // embeddingsCache 内部按文本hash缓存，identity/plan文本在整局游戏里基本不变，
-    // 所以除了第一次，后续基本都是缓存命中，不会重复真正调用LLM/embedding接口。
+    // Fetch embeddings in a batch: index 0 is "my plan", followed by each candidate's motivation text in order.
+    // embeddingsCache caches internally by text hash; identity/plan text barely changes over
+    // the course of a game, so apart from the first call, this is almost always a cache hit and doesn't re-invoke the LLM/embedding API.
     const texts: string[] = [
       myPlanText,
       ...candidates.map((c: CandidateWithContext) => c.motivationText ?? c.id),
@@ -530,16 +535,18 @@ export const findConversationCandidate = internalAction({
   },
 });
 
-// ---- 方案2新增：让“闲逛往哪走”也带目的性 ----
-// 只在 agentOperations.ts 的“agent 刚站定、准备闲逛”分支里调用。
-// 和 findConversationCandidate 的区别：
-//   1. 不套 PLAYER_CONVERSATION_COOLDOWN（冷却期不该拦住“往TA那边走”）。
-//   2. 只看语义动机分，不再减距离惩罚——这里要选的是“值得专门走一趟的人”，
-//      如果还按“动机分-距离”选，永远会选离得近的人，起不到主动接近远处目标的效果。
-//      距离改成用 WANDER_MIN_MOTIVATION_SCORE 这个阈值 + 落地后的抖动来体现，
-//      而不是直接参与打分。
-const WANDER_TARGET_PROBABILITY = 0.6; // 60%概率“有目的地逛”，40%概率保留纯随机
-const WANDER_MIN_MOTIVATION_SCORE = 0.15; // 语义相似度低于这个值，不值得为TA专门改变方向
+// ---- Solution 2 addition: giving "which way to wander" a purpose too ----
+// Called only from agentOperations.ts's "agent just stopped, about to wander" branch.
+// Differences from findConversationCandidate:
+//   1. Does not apply PLAYER_CONVERSATION_COOLDOWN (cooldown shouldn't block "walking toward them").
+//   2. Only looks at the semantic motivation score, no distance penalty subtracted -- the
+      // goal here is "someone worth making a special trip for"; scoring by
+      // motivation-minus-distance would always pick whoever is nearby and defeat the point
+      // of proactively approaching a distant target.
+//      Distance is instead expressed via the WANDER_MIN_MOTIVATION_SCORE threshold plus
+//      post-landing jitter, rather than entering the score directly.
+const WANDER_TARGET_PROBABILITY = 0.6; // 60% chance of "wandering with a purpose", 40% chance of staying purely random
+const WANDER_MIN_MOTIVATION_SCORE = 0.15; // below this semantic-similarity value, it's not worth changing direction just for them
 
 export const chooseWanderTarget = internalAction({
   args: {
@@ -551,7 +558,7 @@ export const chooseWanderTarget = internalAction({
   handler: async (ctx: ActionCtx, args): Promise<{ x: number; y: number } | undefined> => {
     const { now, worldId, player, otherFreePlayers } = args;
 
-    // 保留一部分纯随机闲逛，避免每个人一闲下来就精确扑向全场语义最相关的那个人。
+    // Keep some purely random wandering, so agents don't all beeline for whoever is semantically most relevant the moment they're idle.
     if (Math.random() > WANDER_TARGET_PROBABILITY) {
       return undefined;
     }
@@ -589,7 +596,7 @@ export const chooseWanderTarget = internalAction({
       }
     });
 
-    // 分数太低，不值得为TA专门改变方向，交回纯随机闲逛。
+    // Score too low to be worth changing direction for -- fall back to purely random wandering.
     if (!best || best.motivationScore < WANDER_MIN_MOTIVATION_SCORE) {
       return undefined;
     }

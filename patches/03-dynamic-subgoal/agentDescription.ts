@@ -5,8 +5,10 @@ export class AgentDescription {
   agentId: GameId<'agents'>;
   identity: string;
   plan: string;
-  // 机制2新增：随对话结果动态刷新的"阶段性目标"，比如"我还需要Bob和Pete的承诺"。
-  // 和 identity/plan 不同，这个字段整局游戏里会不断被 rememberConversation 覆盖更新。
+  // Mechanism 2 addition: a "current sub-goal" that's dynamically refreshed based on
+  // conversation outcomes, e.g. "I still need Bob and Pete's commitment." Unlike
+  // identity/plan, this field is continuously overwritten by rememberConversation
+  // throughout the game.
   currentSubGoal?: string;
 
   constructor(serialized: SerializedAgentDescription) {

@@ -1,6 +1,11 @@
 # Stage 3 — From Static Text to Memory-Updated Motivation
 
-**Files:** `patches/03-dynamic-subgoal/{agent.ts,agentDescription.ts,agentOperations.ts,memory.ts,schema.ts,aiTown-schema.ts}`
+**Files:** `patches/03-dynamic-subgoal/{agent.ts,agentDescription.ts,memory.ts}`
+
+`agentOperations.ts` and `schema.ts` are not listed here — they carry over unchanged from
+[`patches/02-fixed-motivation-wander/`](../patches/02-fixed-motivation-wander/) (confirmed
+byte-identical by diff). `convex/aiTown/schema.ts` likewise carries over unchanged from the very
+start — see [`patches/_shared-unchanged/`](../patches/_shared-unchanged/).
 
 Stage 1–2 scored agents against `identity` + `plan` — text fixed at world creation. But an
 agent's real stance shifts conversation to conversation (e.g. Stella moving from "I won't share
@@ -21,6 +26,59 @@ myPlanText = `${identity} ${plan} ${currentSubGoal ?? ''}`.trim();
 
 so the embedding comparison now reflects what an agent is *currently* trying to accomplish, not
 just their static backstory.
+
+### Mechanism 2 decision logic — what changed vs. Solutions 1 & 2
+
+The branch structure for `findConversationCandidate` (invite) and `chooseWanderTarget` (wander)
+described in [`02-fixed-motivation.md`](02-fixed-motivation.md) is **unchanged** in Stage 3 — same
+branches (`motivation` / `random_exploration` / `no_candidates` / `no_plan_text` /
+`below_threshold`), same cooldown rules, same `WANDER_TARGET_PROBABILITY` / `WANDER_MIN_MOTIVATION_SCORE`
+gates. The only thing Stage 3 changes is **what text goes into the embedding at the very start of
+both flows**:
+
+```
+Stage 1-2:  motivationText = `${identity} ${plan}`.trim()
+                               ^^^^^^^^^^^^^^^^^^^^
+                               fixed at world creation, never changes
+
+Stage 3:    motivationText = `${identity} ${plan} ${currentSubGoal ?? ''}`.trim()
+                                                     ^^^^^^^^^^^^^^^^^^^^^
+                                                     regenerated after every conversation
+                                                     by generateSubGoal() in memory.ts
+```
+
+```
+End of a conversation
+        |
+        v
+rememberConversation() (memory.ts)
+  - existing: write the conversation to the memories table (unchanged)
+  - NEW: call generateSubGoal() -- one extra lightweight LLM call
+         "given how this conversation just ended, what's your immediate sub-goal now?"
+        |
+        v
+  LLM call succeeded?  ------------------------> NO --> leave currentSubGoal as-is
+        | YES                                          (failure doesn't block the rest
+        v                                               of rememberConversation)
+  updateCurrentSubGoal mutation
+  - overwrites agentDescriptions.currentSubGoal for this agent (full overwrite, no merge
+    with any previous sub-goal -- see "What this exposed" #1 above)
+        |
+        v
+  Next time this agent runs findConversationCandidate / chooseWanderTarget:
+  loadCandidateContext reads the NEW currentSubGoal into motivationText
+  for both itself and every candidate it compares against
+```
+
+| Stage | Motivation text | Updates | Branch structure |
+|---|---|---|---|
+| 1–2 (fixed) | `identity + plan` | Never — fixed at world creation | `motivation` / `random_exploration` / `no_candidates` / `no_plan_text` / `below_threshold` |
+| 3 (dynamic) | `identity + plan + currentSubGoal` | After every conversation, via one extra LLM call | *same five branches* — only the scoring **input** changed, not the decision tree |
+
+That last row is the point of the "Confirmed data" section below: making the scoring *input*
+smarter didn't change the *branch distribution* — `no_candidates` still dominates, and even got
+worse. The bottleneck was never about the quality of the motivation text; it's about how rarely
+the motivation-scoring code path is reached at all.
 
 ## What this exposed
 

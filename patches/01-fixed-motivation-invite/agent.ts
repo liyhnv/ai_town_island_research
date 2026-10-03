@@ -32,12 +32,12 @@ import * as embeddingsCache from '../agent/embeddingsCache';
 
 const selfInternal = internal.aiTown.agent;
 
-// ---- 方案1新增：语义动机打分的可调参数 ----
-// 后续想做对照实验（比如“关掉动机权重，只看距离”）可以把这几个常量挪到 constants.ts 里，
-// 或者直接改成 0/1 做开关。
-const MOTIVATION_WEIGHT = 1.0; // 语义相关度（我的plan 和 对方identity/plan的余弦相似度）的权重
-const DISTANCE_WEIGHT = 0.6; // 距离惩罚的权重（距离越远分越低）
-const RANDOM_EXPLORATION_PROBABILITY = 0.3; // 保留一部分“纯随机/就近”选择，避免社交网络固化成几个固定的对子
+// ---- Solution 1 addition: tunable parameters for semantic motivation scoring ----
+// For future ablation experiments (e.g. "turn off motivation weight, use distance only"),
+// these constants could be moved to constants.ts, or toggled directly as 0/1 switches.
+const MOTIVATION_WEIGHT = 1.0; // weight of semantic relevance (cosine similarity between my plan and the candidate's identity/plan)
+const DISTANCE_WEIGHT = 0.6; // weight of the distance penalty (farther away -> lower score)
+const RANDOM_EXPLORATION_PROBABILITY = 0.3; // keep some "pure random / nearest" choices so the social network doesn't collapse into a few fixed pairs
 
 export class Agent {
   id: GameId<'agents'>;
@@ -349,15 +349,19 @@ export const agentSendMessage = internalMutation({
   },
 });
 
-// ---- 方案1改动核心 ----
-// 原来的 findConversationCandidate 是一个 internalQuery，纯按 PLAYER_CONVERSATION_COOLDOWN
-// 过滤 + 距离排序。现在拆成两部分：
-//   1. loadCandidateContext（internalQuery）：只做数据库读取——保留原有的冷却过滤逻辑，
-//      并且额外把“我的 identity+plan”和“每个候选人的 identity+plan（或 description）”读出来。
-//   2. findConversationCandidate（改成 internalAction）：因为算 embedding 需要调用
-//      Ollama/OpenAI 的网络接口，Convex 的 query 函数不允许发网络请求，所以这一步必须是 action。
-//      这里用 embeddingsCache（项目里memory模块已经在用的缓存工具）算“我的plan”和“候选人
-//      identity/plan”的语义相似度，作为“动机分”，再和距离分加权，取代原来纯距离排序。
+// ---- Core of the Solution 1 change ----
+// The original findConversationCandidate was an internalQuery that filtered purely by
+// PLAYER_CONVERSATION_COOLDOWN and sorted by distance. It's now split into two parts:
+//   1. loadCandidateContext (internalQuery): database reads only -- keeps the original
+//      cooldown-filtering logic, and additionally loads "my identity+plan" and each
+      // candidate's identity+plan (or description).
+//   2. findConversationCandidate (now an internalAction): computing embeddings requires
+//      calling the Ollama/OpenAI network API, which a Convex query cannot do -- so this
+      // step must be an action.
+//      This uses embeddingsCache (the caching utility already used by the memory module)
+//      to compute the semantic similarity between "my plan" and each candidate's
+      // identity/plan as the "motivation score", then weights it against the distance
+      // score, replacing the original pure-distance sort.
 
 type CandidateWithContext = {
   id: string;
@@ -381,7 +385,7 @@ export const loadCandidateContext = internalQuery({
       throw new Error(`World ${worldId} not found`);
     }
 
-    // 我自己（发起筛选的这个agent）的 identity + plan，作为“动机文本”的锚点。
+    // My own (the agent running this selection) identity + plan, as the anchor for the "motivation text".
     let myPlanText: string | null = null;
     const myAgent = world.agents.find((a) => a.playerId === player.id);
     if (myAgent) {
@@ -397,7 +401,7 @@ export const loadCandidateContext = internalQuery({
     const candidates: CandidateWithContext[] = [];
 
     for (const otherPlayer of otherFreePlayers) {
-      // 冷却过滤逻辑，和原版完全一致，没有改动。
+      // Cooldown-filtering logic, identical to the original -- unchanged.
       const lastMember = await ctx.db
         .query('participatedTogether')
         .withIndex('edge', (q) =>
@@ -409,7 +413,7 @@ export const loadCandidateContext = internalQuery({
         continue;
       }
 
-      // 候选人如果是agent，用identity+plan；如果是人类玩家（没有agent），退化用playerDescription。
+      // If the candidate is an agent, use identity+plan; if it's a human player (no agent), fall back to playerDescription.
       let motivationText: string | null = null;
       const candidateAgent = world.agents.find((a) => a.playerId === otherPlayer.id);
       if (candidateAgent) {
@@ -475,11 +479,12 @@ export const findConversationCandidate = internalAction({
       return undefined;
     }
 
-    // 保留一部分“纯随机/就近”选择：
-    // 1) 没查到自己的plan文本时（理论上不该发生，兜底）；
-    // 2) 按 RANDOM_EXPLORATION_PROBABILITY 的概率主动放弃动机打分。
-    // 这样可以避免agent的社交网络很快收敛成几个固定对子，保留一部分“偶然社交”，
-    // 这对你想观察的“跨家庭意外接触/立场传播路径”这类现象很重要。
+    // Keep some "pure random / nearest" choices:
+    // 1) when my own plan text can't be found (shouldn't happen in theory -- a fallback);
+    // 2) with probability RANDOM_EXPLORATION_PROBABILITY, deliberately skip motivation scoring.
+    // This keeps agents' social network from quickly converging into a few fixed pairs,
+    // preserving some "chance encounters" --
+    // important for observing things like cross-family incidental contact or belief-propagation paths.
     if (!myPlanText || Math.random() < RANDOM_EXPLORATION_PROBABILITY) {
       const sorted = [...candidates].sort(
         (a: CandidateWithContext, b: CandidateWithContext) =>
@@ -488,9 +493,9 @@ export const findConversationCandidate = internalAction({
       return sorted[0]?.id;
     }
 
-    // 批量拿 embedding：第0个是“我的plan”，后面依次是每个候选人的动机文本。
-    // embeddingsCache 内部按文本hash缓存，identity/plan文本在整局游戏里基本不变，
-    // 所以除了第一次，后续基本都是缓存命中，不会重复真正调用LLM/embedding接口。
+    // Fetch embeddings in a batch: index 0 is "my plan", followed by each candidate's motivation text in order.
+    // embeddingsCache caches internally by text hash; identity/plan text barely changes over
+    // the course of a game, so apart from the first call, this is almost always a cache hit and doesn't re-invoke the LLM/embedding API.
     const texts: string[] = [
       myPlanText,
       ...candidates.map((c: CandidateWithContext) => c.motivationText ?? c.id),
