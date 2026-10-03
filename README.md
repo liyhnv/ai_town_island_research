@@ -45,6 +45,9 @@ Full reasoning, code excerpts, and the TypeScript/deployment issues hit along th
 
 ### Narrative, in order
 
+0. **[A note on methodology](docs/00-methodology.md)** — how this code was actually written
+   (AI-assisted implementation under my direction, per my advisor's guidance), and what I mean by
+   "my work" in the rest of this repo.
 1. **[Diagnosing the baseline](docs/01-baseline-problem.md)** — why the stock AI Town engine's
    partner-selection logic never reads agent identity/plan.
 2. **[Patching in a fixed motivation score](docs/02-fixed-motivation.md)** — embedding-based
