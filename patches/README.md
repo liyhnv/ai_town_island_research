@@ -1,13 +1,21 @@
 # `patches/` — how the code is organized
 
-`00-baseline/` holds the **complete, pristine original code** — exactly as pulled from
-[`a16z-infra/ai-town`](https://github.com/a16z-infra/ai-town) on GitHub — for every file that gets
-touched at some point in this research. `01-`, `02-`, `03-` each hold **only the files that were
-genuinely changed at that stage**, verified by diffing against `00-baseline/` (not by trusting old
-folder names — an earlier pass through this repo had mislabeled a couple of files, see below). A
-file not listed in a later stage's folder is unchanged from the previous stage — go back to
-`00-baseline/` (or the most recent stage that does list it) to see its actual content at that
-point.
+**Scope:** this folder only contains the handful of backend files that this research actually
+reads or changes — the social-decision logic in `convex/aiTown/` and `convex/agent/`, plus the two
+schema files those changes depend on. It is **not** a copy of the full AI Town project: the
+frontend (`src/`, `index.html`), build/deploy tooling (`vite.config.ts`, `Dockerfile`,
+`docker-compose.yml`, `fly/`, `vercel.json`, …), dependency manifests, and everything else in the
+[original project](https://github.com/a16z-infra/ai-town) are left out on purpose, because none of
+it is part of what changed across these four stages. For the full project, clone
+`a16z-infra/ai-town` directly.
+
+Within that scope, `00-baseline/` holds the **complete, pristine original code** — exactly as
+pulled from `a16z-infra/ai-town` on GitHub — for every one of those backend files. `01-`, `02-`,
+`03-` each hold **only the files that were genuinely changed at that stage**, verified by diffing
+against `00-baseline/` (not by trusting old folder names — an earlier pass through this repo had
+mislabeled a couple of files, see below). A file not listed in a later stage's folder is unchanged
+from the previous stage — go back to `00-baseline/` (or the most recent stage that does list it)
+to see its actual content at that point.
 
 ## Layout
 

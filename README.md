@@ -39,7 +39,7 @@ Full reasoning, code excerpts, and the TypeScript/deployment issues hit along th
 | Folder | What's in it |
 |---|---|
 | [`docs/`](docs/) | The actual research narrative, one file per stage — **read these in order**, the table above is just a map |
-| [`patches/`](patches/) | `00-baseline/` holds the complete, pristine original code for every file touched anywhere in this research; `01-`/`02-`/`03-` each hold only the files that genuinely changed at that stage — see [`patches/README.md`](patches/README.md) for the full map and why a couple of files aren't where an earlier pass through this repo first put them |
+| [`patches/`](patches/) | Only the backend decision-logic files this research touches (not a full AI Town checkout — see the note below). `00-baseline/` holds the complete, pristine original version of each of those files; `01-`/`02-`/`03-` each hold only the files that genuinely changed at that stage — see [`patches/README.md`](patches/README.md) for the full map and why a couple of files aren't where an earlier pass through this repo first put them |
 | [`data/`](data/) | Exported run data per stage: raw Convex table exports (`.xlsx` from the dashboard UI, `.jsonl` from the dashboard's raw export) — message transcripts, agent memories, agent descriptions, and (from Stage 2 onward) decision logs |
 | [`analysis/`](analysis/) | `decision_log_stats.py` — the script that produces the percentages cited in `docs/` and the table above, runs on either `.xlsx` or `.jsonl` decision-log exports |
 
@@ -59,10 +59,15 @@ Full reasoning, code excerpts, and the TypeScript/deployment issues hit along th
 
 ## A note on `patches/`
 
-This repo does **not** include a full AI Town checkout (dependencies, generated Convex code,
-assets, src/, etc. — see the [original project](https://github.com/a16z-infra/ai-town) for that).
-`patches/00-baseline/` holds the complete, pristine original code — straight from
-`a16z-infra/ai-town` on GitHub — for every file this research ever touches. Each later
+`patches/` only holds the handful of **backend decision-logic files this research actually
+changes** — not a full AI Town checkout. The original project also includes a frontend (`src/`,
+`index.html`), build/deploy tooling (`vite.config.ts`, `Dockerfile`, `docker-compose.yml`, `fly/`,
+`vercel.json`, …), and dependency manifests — none of that is touched by this research, so none of
+it is duplicated here. See the [original project](https://github.com/a16z-infra/ai-town) for the
+full codebase.
+
+Within that narrower scope, `patches/00-baseline/` holds the complete, pristine original code —
+straight from `a16z-infra/ai-town` on GitHub — for every one of those backend files. Each later
 `patches/NN-stage/` folder holds only the files **genuinely** changed at that stage, verified by
 diffing against `00-baseline/` rather than by trusting old folder/file names (an earlier pass
 through this repo had a couple of files mislabeled or duplicated; see
