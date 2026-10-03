@@ -21,44 +21,59 @@ shipwreck with limited food. Each has a persona and a private stance on whether 
 or protect their own family's stock. The question: does the group converge toward cooperation,
 toward hoarding, or fragment — and what in the simulation's mechanics determines that?
 
+## At a glance
+
+| Stage | Core change | What it exposed | Data captured | Code |
+|---|---|---|---|---|
+| 0 — Baseline | *(none — diagnosis only)* | Partner selection reads only distance + cooldown, never `identity`/`plan` | 2026-09-06, 13:44–14:33 (49 min, 237 msgs) | [`patches/00-baseline/`](patches/00-baseline/) |
+| 1 — Fixed motivation (invite) | Embedding-similarity score added to `findConversationCandidate` | Only fires when agent is already pathfinding | 2026-09-08, 13:04–13:36 (32 min, 98 msgs) — *same continuous world as Stage 0, code hot-deployed mid-run* | [`patches/01-fixed-motivation-invite/`](patches/01-fixed-motivation-invite/) |
+| 2 — Fixed motivation (wander) | Same scoring extended to idle "wander" decisions; decision-log system added | `no_candidates` branch still dominates invite decisions (52% of 209 logged) | 2026-09-13, 12:48–13:37 core capture (49 min, 250 msgs); full world ran to 09-15 14:44, decision-log window 14:20–14:43 (23 min, 209 decisions) | [`patches/02-fixed-motivation-wander/`](patches/02-fixed-motivation-wander/) |
+| 3 — Dynamic sub-goal | `currentSubGoal` regenerated from memory after each conversation | `no_candidates` *worse* (67% of 568), motivation-driven share *drops* (28.7% → 19.5%) despite smarter scoring text | 2026-10-03, 02:46–03:44 UTC (58 min, 568 decisions, 42 memories) | [`patches/03-dynamic-subgoal/`](patches/03-dynamic-subgoal/) |
+| → Pivot | — | Three rounds of increasingly sophisticated patches couldn't move the bottleneck — it's upstream of any scoring logic | — | — |
+
+Full reasoning, code excerpts, and the TypeScript/deployment issues hit along the way are in
+[`docs/`](docs/), one file per row above, read in order.
+
 ## How to read this repo
 
 | Folder | What's in it |
 |---|---|
-| [`docs/`](docs/) | The actual research narrative, one file per stage — read these in order |
-| [`patches/`](patches/) | The changed source files at each stage (not a full AI Town checkout — see below) |
-| [`data/`](data/) | Exported run data (decision logs, memories, messages, descriptions) per stage |
-| [`analysis/`](analysis/) | The script used to compute the branch-distribution stats cited in the docs |
+| [`docs/`](docs/) | The actual research narrative, one file per stage — **read these in order**, the table above is just a map |
+| [`patches/`](patches/) | Only the files that changed at each stage (see note below) — diff two stages' versions of `agent.ts` directly to see what moved |
+| [`data/`](data/) | Exported run data per stage: raw Convex table exports (`.xlsx` from the dashboard UI, `.jsonl` from the dashboard's raw export) — message transcripts, agent memories, agent descriptions, and (from Stage 2 onward) decision logs |
+| [`analysis/`](analysis/) | `decision_log_stats.py` — the script that produces the percentages cited in `docs/` and the table above, runs on either `.xlsx` or `.jsonl` decision-log exports |
 
 ### Narrative, in order
 
 1. **[Diagnosing the baseline](docs/01-baseline-problem.md)** — why the stock AI Town engine's
    partner-selection logic never reads agent identity/plan.
 2. **[Patching in a fixed motivation score](docs/02-fixed-motivation.md)** — embedding-based
-   scoring added at invite time, then extended to idle "wander" behavior; plus the decision-logging
-   system that made the results falsifiable instead of anecdotal.
+   scoring added at invite time, then extended to idle "wander" behavior; the decision-logging
+   system that made results falsifiable; and a deployment bug the logs caught by accident.
 3. **[From static text to memory-updated motivation](docs/03-dynamic-subgoal.md)** — letting an
-   agent's current sub-goal update after every conversation, and what that exposed about
-   information loss and a persistent upstream bottleneck.
+   agent's current sub-goal update after every conversation, what that exposed about information
+   loss, and the confirmed data showing the upstream bottleneck persisted anyway.
 4. **[Why I moved past patching](docs/04-why-pivot-to-agentopia.md)** — the quantitative case for
-   why this was the point to stop iterating on AI Town's engine and look at frameworks built
-   around persistent agent state from the ground up.
+   stopping iteration on AI Town's engine and looking at frameworks built around persistent agent
+   state from the ground up.
 
 ## A note on `patches/`
 
 This repo does **not** include a full AI Town checkout (dependencies, generated Convex code,
 assets, etc. — see the [original project](https://github.com/a16z-infra/ai-town) for that). Each
-`patches/NN-stage/` folder holds only the files that were added or changed at that stage, so the
-diffs between stages are easy to read directly. To actually run a given stage, drop its files into
-a fresh `npx create-ai-town` checkout at the matching paths (`convex/aiTown/*.ts`,
+`patches/NN-stage/` folder holds only the files added or changed at that stage — deliberately, so
+that the diff between any two stages is a direct file-to-file comparison rather than something you
+have to extract from two full checkouts. To actually run a given stage, drop its files into a
+fresh `npx create-ai-town` checkout at the matching paths (`convex/aiTown/*.ts`,
 `convex/agent/memory.ts`, `convex/schema.ts`).
 
 ## Reproducing the stats
 
 ```bash
 pip install openpyxl
-python analysis/decision_log_stats.py data/03-dynamic-subgoal/decisionlogs.xlsx
+python analysis/decision_log_stats.py data/03-dynamic-subgoal/decisionlogs.jsonl
+python analysis/decision_log_stats.py data/02-fixed-motivation-wander/decisionlog-export/decisionlogs.xlsx
 ```
 
 prints the branch-distribution table (motivation / random_exploration / no_candidates / ...) that
-the docs cite, directly from the raw exported decision log.
+`docs/` and the table above cite, directly from the raw exported decision log.
