@@ -37,3 +37,15 @@ conversation partners effectively random with respect to motivation, which would
 emergent structure before it has a chance to appear.
 
 This is the gap that motivated Stage 1.
+
+## A methodological note
+
+`data/00-baseline/baseline_records.xlsx` and `data/01-fixed-motivation/solution1_records.xlsx`
+are not two independent runs — I confirmed (by matching `worldId` and overlapping
+`conversationId`s in the raw Convex export) that both are time-slices of the **same continuously
+running world** (created 2026-09-06, messages spanning 09-06 through 09-08): the baseline behavior
+is simply what that world looked like before Solution 1's code was deployed, and the Solution-1
+behavior is the same world's later conversations, after a live code deploy. Agents' accumulated
+memories carry across that boundary — this is a before/after comparison within one run, not a
+clean A/B test with two freshly-seeded worlds. Worth stating explicitly rather than implying
+otherwise.

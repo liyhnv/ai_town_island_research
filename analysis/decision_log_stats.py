@@ -2,34 +2,44 @@
 Compute branch-distribution stats (motivation / random_exploration / no_candidates / ...)
 from an exported `agentDecisionLogs` table, for any stage under data/.
 
+Accepts either the xlsx export from the Convex dashboard's table UI, or the raw
+`documents.jsonl` export from the dashboard's "Export" button.
+
 Usage:
     pip install openpyxl
-    python analysis/decision_log_stats.py data/03-dynamic-subgoal/decisionlogs.xlsx
-
-Expects the columns produced by the project's Convex dashboard export: at minimum
-`decisionType` and `branch` (plus optional creationTime_readable, playerId, playerName).
+    python analysis/decision_log_stats.py data/03-dynamic-subgoal/decisionlogs.jsonl
+    python analysis/decision_log_stats.py data/02-fixed-motivation-wander/decisionlog-export/decisionlogs.xlsx
 """
+import json
 import sys
 from collections import Counter
 
-import openpyxl
+
+def load_rows_jsonl(path):
+    with open(path) as f:
+        return [json.loads(line) for line in f if line.strip()]
 
 
-def load_rows(path):
+def load_rows_xlsx(path):
+    import openpyxl
+
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     ws = wb.active
     rows = list(ws.iter_rows(values_only=True))
     header = [str(h) for h in rows[0]]
-    return header, rows[1:]
+    return [dict(zip(header, r)) for r in rows[1:]]
+
+
+def load_rows(path):
+    if path.endswith(".jsonl"):
+        return load_rows_jsonl(path)
+    return load_rows_xlsx(path)
 
 
 def main(path):
-    header, data = load_rows(path)
-    dt_i = header.index("decisionType")
-    br_i = header.index("branch")
-
+    data = load_rows(path)
     total = len(data)
-    counts = Counter((r[dt_i], r[br_i]) for r in data)
+    counts = Counter((r["decisionType"], r["branch"]) for r in data)
 
     print(f"{path}")
     print(f"total decisions: {total}\n")

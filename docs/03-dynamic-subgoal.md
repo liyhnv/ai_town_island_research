@@ -44,11 +44,33 @@ addresses one symptom without touching the shared root cause: in this engine, "w
 and "what you've promised" are two unrelated pieces of state that happen to be read by the same
 function. See `04-why-pivot-to-agentopia.md` for how this shaped the next step.
 
-## Data status (open item)
+## Confirmed data
 
-`data/03-dynamic-subgoal/` is currently empty. The export I originally placed here turned out to
-be a Solution-2 run where `currentSubGoal` was never actually populated (see the postscript in
-`02-fixed-motivation.md`) — it was removed from this stage rather than left here mislabeled. The
-data that belongs here is a later, shorter (~58-minute) run whose `currentSubGoal` population has
-not yet been confirmed; once a `descriptions.xlsx` export from that run confirms the field is
-non-empty, its decision logs / memories / messages / descriptions go here.
+`data/03-dynamic-subgoal/` now holds a run (`worldId m172tfkz52mxb1fg26w30w8px18fk90x`, ~58 minutes,
+568 decisions logged) where `descriptions.jsonl` confirms `currentSubGoal` is populated and distinct
+for all 6 agents — e.g. Kurt's reads "Commit to fair rations within our own family for a trial
+period," Pete's "I need to see effort from the others before I start sharing everything." This is
+the first run in this repo where Mechanism 2 is confirmed to have actually been active (contrast
+with the Solution-2 run in `02-fixed-motivation.md`'s postscript, where the same field was empty
+throughout).
+
+Branch distribution for this run (`python analysis/decision_log_stats.py data/03-dynamic-subgoal/decisionlogs.jsonl`
+after adding JSONL support — see note below):
+
+| decisionType | branch | count | % |
+|---|---|---|---|
+| invite | no_candidates | 381 | 67.1% |
+| wander | motivation | 57 | 10.0% |
+| invite | motivation | 54 | 9.5% |
+| wander | random_exploration | 51 | 9.0% |
+| invite | random_exploration | 25 | 4.4% |
+
+Motivation-driven share: 19.5% — lower than the 28.7% seen in the Solution-2 run, even though the
+motivation text is now dynamic rather than static. This is the data point that most directly
+supports `04-why-pivot-to-agentopia.md`: making the content of the motivation signal smarter
+(Stage 3) did not move the needle on *how often* that signal gets consulted at all — the
+`no_candidates` bottleneck identified back in Stage 1–2 is, if anything, worse here.
+
+(Note: `decisionlogs.jsonl` here is the Convex Dashboard's raw JSONL export rather than an xlsx —
+kept as-is since JSONL is already diff- and grep-friendly; `analysis/decision_log_stats.py`
+currently expects xlsx and needs a small JSONL-reading branch added to run on this file directly.)
