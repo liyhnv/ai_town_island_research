@@ -30,7 +30,7 @@ the LLM prompt for *what to say* once a conversation has already started (`conve
 ## Why this matters for the research question
 
 If I want to study whether cooperative or hoarding norms emerge from repeated interaction, the
-selection of *who talks to whom* is a core causal variable — it determines whether a "pro-sharing"
+selection of *who talks to whom* is a core causal variable， it determines whether a "pro-sharing"
 agent and a "hoarding" agent are even likely to meet, or whether topic-relevant conversations can
 chain into visible shifts in group-level belief. A distance+cooldown-only selector makes
 conversation partners effectively random with respect to motivation, which would wash out any
