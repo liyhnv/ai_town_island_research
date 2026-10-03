@@ -39,7 +39,7 @@ Full reasoning, code excerpts, and the TypeScript/deployment issues hit along th
 | Folder | What's in it |
 |---|---|
 | [`docs/`](docs/) | The actual research narrative, one file per stage — **read these in order**, the table above is just a map |
-| [`patches/`](patches/) | Only the files that genuinely changed at each stage, plus a `_shared-unchanged/` folder for files confirmed pristine across every stage — see [`patches/README.md`](patches/README.md) for the full map and why a couple of files aren't where an earlier pass through this repo first put them |
+| [`patches/`](patches/) | `00-baseline/` holds the complete, pristine original code for every file touched anywhere in this research; `01-`/`02-`/`03-` each hold only the files that genuinely changed at that stage — see [`patches/README.md`](patches/README.md) for the full map and why a couple of files aren't where an earlier pass through this repo first put them |
 | [`data/`](data/) | Exported run data per stage: raw Convex table exports (`.xlsx` from the dashboard UI, `.jsonl` from the dashboard's raw export) — message transcripts, agent memories, agent descriptions, and (from Stage 2 onward) decision logs |
 | [`analysis/`](analysis/) | `decision_log_stats.py` — the script that produces the percentages cited in `docs/` and the table above, runs on either `.xlsx` or `.jsonl` decision-log exports |
 
@@ -60,16 +60,16 @@ Full reasoning, code excerpts, and the TypeScript/deployment issues hit along th
 ## A note on `patches/`
 
 This repo does **not** include a full AI Town checkout (dependencies, generated Convex code,
-assets, etc. — see the [original project](https://github.com/a16z-infra/ai-town) for that). Each
-`patches/NN-stage/` folder holds only the files **genuinely** added or changed at that stage —
-verified by diffing against a pristine upstream checkout, not by trusting old folder/file names
-(an earlier pass through this repo had a couple of files mislabeled or duplicated; see
-[`patches/README.md`](patches/README.md) for what was wrong and how it was caught). Files
-confirmed identical to upstream across every single stage live once in
-[`patches/_shared-unchanged/`](patches/_shared-unchanged/) instead of being repeated per stage.
-This keeps the diff between any two stages a direct file-to-file comparison rather than something
-you have to extract from two full checkouts. To actually run a given stage, see the
-reconstruction recipe in [`patches/README.md`](patches/README.md).
+assets, src/, etc. — see the [original project](https://github.com/a16z-infra/ai-town) for that).
+`patches/00-baseline/` holds the complete, pristine original code — straight from
+`a16z-infra/ai-town` on GitHub — for every file this research ever touches. Each later
+`patches/NN-stage/` folder holds only the files **genuinely** changed at that stage, verified by
+diffing against `00-baseline/` rather than by trusting old folder/file names (an earlier pass
+through this repo had a couple of files mislabeled or duplicated; see
+[`patches/README.md`](patches/README.md) for what was wrong and how it was caught). This keeps the
+diff between `00-baseline/` and any stage, or between any two stages, a direct file-to-file
+comparison rather than something you have to extract from two full checkouts. To actually run a
+given stage, see the reconstruction recipe in [`patches/README.md`](patches/README.md).
 
 ## Reproducing the stats
 

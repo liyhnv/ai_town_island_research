@@ -5,7 +5,7 @@
 `agentOperations.ts` and `schema.ts` are not listed here — they carry over unchanged from
 [`patches/02-fixed-motivation-wander/`](../patches/02-fixed-motivation-wander/) (confirmed
 byte-identical by diff). `convex/aiTown/schema.ts` likewise carries over unchanged from the very
-start — see [`patches/_shared-unchanged/`](../patches/_shared-unchanged/).
+start — see [`patches/00-baseline/`](../patches/00-baseline/).
 
 Stage 1–2 scored agents against `identity` + `plan` — text fixed at world creation. But an
 agent's real stance shifts conversation to conversation (e.g. Stella moving from "I won't share

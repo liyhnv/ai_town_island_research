@@ -6,8 +6,7 @@
 is the project-root schema, extended here with the new `agentDecisionLogs` table). `agentDescription.ts`,
 `memory.ts`, and `convex/aiTown/schema.ts` are **not** listed for either stage — diffing them against
 upstream confirmed they were still byte-for-byte pristine at this point (see
-[`patches/_shared-unchanged/`](../patches/_shared-unchanged/) and the real changes to them in
-Stage 3 instead).
+[`patches/00-baseline/`](../patches/00-baseline/) and the real changes to them in Stage 3 instead).
 
 "Fixed" here means the *source text* each agent is scored against — `identity` + `plan` — is set
 once at world creation and never changes during the run. What's computed per-decision is an
