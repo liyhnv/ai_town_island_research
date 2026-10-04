@@ -11,6 +11,30 @@ shipwreck with limited food, each given a persona (`identity`) and a private `pl
 their stance on sharing resources (e.g. a family wanting to hoard vs. an agent wanting to pool
 food for the group).
 
+## Why this scenario, and not the default personas
+
+AI Town is a framework, not a finished simulation. Convex built the agent loop, the movement and
+embedding plumbing, and left the personas, the scenario and most of the actual behavior for
+whoever uses it to define. So picking personas and a scenario was the first and most basic
+configuration choice this project required, not something layered on top of someone else's
+research design.
+
+The default personas that ship with the project give each agent a backstory and let them wander
+around talking to whoever they run into, but there is no shared problem forcing a decision. Left
+alone, agents just keep talking indefinitely, each according to their own persona. Nothing creates
+tension or disagreement between them, so there is nothing that would push an agent to reconsider
+its stance or act differently depending on who it is talking to. That makes it hard to study how
+agents actually think or change under different constraints, whether that constraint is their own
+persona, an incentive they are given, or what other agents think of them.
+
+The island scenario was built to create that tension on purpose. Some of the six characters
+already have a relationship before the story starts, a married couple, a parent and a child, while
+others are strangers to each other. All six are then placed in one shared situation with real
+scarcity and real consequences. That combination, existing ties next to strangers, one event
+everyone has to respond to, and choices that actually cost something, is what produces
+disagreement and visible shifts in behavior worth measuring, instead of six characters each
+describing themselves on repeat.
+
 ## What I found reading the engine
 
 AI Town's agent loop (`Agent.tick()` in `agent.ts`, driven by `agentDoSomething` in
